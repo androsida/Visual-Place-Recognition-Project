@@ -94,22 +94,55 @@ class MixVPR(nn.Module):
 ### otherwise `self.backbone = ResNet()` will fail
 ### (academic purpose)
 class ResNet(nn.Module):
-    def __init__(self):
+    """
+    ResNet-50 wrapper that keeps the torchvision model under `self.model`.
+    Many saved checkpoints expect keys like "backbone.model.*". The forward()
+    returns features from layer3 (stride 16), which for a 320x320 input produces
+    ~20x20 feature maps with 1024 channels (matches MixVPR expectations).
+
+    To be compatible with checkpoints that do NOT include parameters for layer4/fc,
+    layer4 and fc are replaced with identity modules so the model does not expect
+    parameters for them when loading state_dicts.
+    """
+
+    def __init__(self, pretrained=False):
         super().__init__()
-        resnet = torchvision.models.resnet50(pretrained=True)
-        
-        self.model = nn.Sequential(
-            resnet.conv1,
-            resnet.bn1,
-            resnet.relu,
-            resnet.maxpool,
-            resnet.layer1,
-            resnet.layer2,
-            resnet.layer3
-        )
+
+        # Load torchvision's resnet50. Support both older and newer torchvision APIs.
+        try:
+            if pretrained:
+                resnet = torchvision.models.resnet50(weights=torchvision.models.ResNet50_Weights.DEFAULT)
+            else:
+                resnet = torchvision.models.resnet50(weights=None)
+        except Exception:
+            # fallback for torchvision versions using `pretrained=` argument
+            resnet = torchvision.models.resnet50(pretrained=pretrained)
+
+        # Keep the full ResNet model under the attribute name `model`.
+        # This matches checkpoints that have keys like "backbone.model.conv1.weight".
+        self.model = resnet
+
+        # The MixVPR aggregator expects features from layer3 (1024 channels).
+        # Some checkpoints were saved without layer4/fc parameters. If layer4/fc
+        # exist with parameters in our model, load_state_dict will expect their keys.
+        # Replace them with Identity modules so no parameters are required for them.
+        # This preserves the attribute names so checkpoint keys that reference
+        # "backbone.model.<...>" still match.
+        self.model.layer4 = nn.Identity()
+        self.model.fc = nn.Identity()
 
     def forward(self, x):
-        return self.model(x)
+        # Replicate the standard forward up to layer3 (exclude layer4 / avgpool / fc)
+        x = self.model.conv1(x)
+        x = self.model.bn1(x)
+        x = self.model.relu(x)
+        x = self.model.maxpool(x)
+
+        x = self.model.layer1(x)
+        x = self.model.layer2(x)
+        x = self.model.layer3(x)
+
+        return x
 
 class MixVPRModel(torch.nn.Module):
     def __init__(self, agg_config={}):
