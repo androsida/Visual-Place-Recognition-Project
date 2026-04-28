@@ -120,6 +120,7 @@ def main(args):
         z_data['positives_per_query'] = positives_per_query
         z_data['predictions'] = predictions
         z_data['distances'] = distances
+        z_data['distance_metric'] = args.distance_metric
 
         torch.save(z_data, log_dir / "z_data.torch")
 
