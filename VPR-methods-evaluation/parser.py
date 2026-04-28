@@ -46,6 +46,13 @@ def parse_arguments():
         choices=[None, "VGG16", "ResNet18", "ResNet50", "ResNet101", "ResNet152", "Dinov2"],
         help="_",
     )
+    parser.add_argument(
+        "--distance_metric",
+        type=str,
+        default="l2",
+        choices=["l2","dot"],
+        help="Distance metric for knn search: l2 or dot prod",
+    )
     parser.add_argument("--descriptors_dimension", type=int, default=None, help="_")
     parser.add_argument("--database_folder", type=str, required=True, help="path/to/database")
     parser.add_argument("--queries_folder", type=str, required=True, help="path/to/queries")
