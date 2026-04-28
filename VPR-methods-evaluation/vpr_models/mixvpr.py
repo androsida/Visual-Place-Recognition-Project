@@ -96,13 +96,9 @@ class MixVPR(nn.Module):
 class ResNet(nn.Module):
     def __init__(self):
         super().__init__()
-        # Carichiamo la ResNet50 pre-addestrata da torchvision
         resnet = torchvision.models.resnet50(pretrained=True)
         
-        # Estraiamo solo i livelli intermedi necessari (fino al layer3 compreso)
-        # Questo garantisce in output un tensore [Batch, 1024, 20, 20]
-        # partendo da un'immagine in input di 320x320.
-        self.features = nn.Sequential(
+        self.model = nn.Sequential(
             resnet.conv1,
             resnet.bn1,
             resnet.relu,
@@ -113,8 +109,7 @@ class ResNet(nn.Module):
         )
 
     def forward(self, x):
-        return self.features(x)
-
+        return self.model(x)
 
 class MixVPRModel(torch.nn.Module):
     def __init__(self, agg_config={}):
