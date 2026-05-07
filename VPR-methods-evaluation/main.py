@@ -62,9 +62,11 @@ def main(args):
         )
 
 
-        #---INIZIO PRIMO CRONOMETRO
+        
         
         queries_dataloader = DataLoader(dataset=queries_subset_ds, num_workers=args.num_workers, batch_size=1)
+
+        #---INIZIO PRIMO CRONOMETRO
         for images, indices in tqdm(queries_dataloader):
             descriptors = model(images.to(args.device))
             descriptors = descriptors.cpu().numpy()
