@@ -68,7 +68,7 @@ def main(args):
 
         #---INIZIO PRIMO CRONOMETRO
         torch.cuda.synchronize()
-        t01=time.perf_counter()
+        t_start_extraction = time.perf_counter()
         for images, indices in tqdm(queries_dataloader):
             descriptors = model(images.to(args.device))
             descriptors = descriptors.cpu().numpy()
@@ -76,7 +76,7 @@ def main(args):
         
          #---FINE PRIMO CRONOMETRO
         torch.cuda.synchronize()
-        tf1=time.perf_counter() - t01
+        time_extraction = time.perf_counter() - t_start_extraction
 
     queries_descriptors = all_descriptors[test_ds.num_database :]
     database_descriptors = all_descriptors[: test_ds.num_database]
@@ -102,16 +102,21 @@ def main(args):
 
     #--- INIZIO SECONDO CRONOMETRO
     torch.cuda.synchronize()
-    t02=time.perf_counter()
+    t_start_retrieval = time.perf_counter()
     
     distances, predictions = faiss_index.search(queries_descriptors, k)
 
     #--- FINE SECONDO CRONOMETRO
     torch.cuda.synchronize()
-    tf2=time.perf_counter() - t02
+    time_retrieval = time.perf_counter() - t_start_retrieval
+
+    total_vpr_time = time_extraction + time_retrieval
+    mean_time_per_query = total_vpr_time / test_ds.num_queries
     
-    logger.info(f"TIMING - Total query processing time: {tf1+tf2:.6f} s")
-    logger.info(f"TIMING - Single (mean) query processing time: {(tf1+tf2) / test_ds.num_queries:.6f} s/query")
+    logger.info(f"TIMING - Global Extraction Time: {time_extraction:.6f} s")
+    logger.info(f"TIMING - Global Retrieval Time (FAISS): {time_retrieval:.6f} s")
+    logger.info(f"TIMING - Total query processing time: {total_vpr_time:.6f} s")
+    logger.info(f"TIMING - Single (mean) query processing time: {mean_time_per_query:.6f} s/query")
     
     del database_descriptors, all_descriptors
 
