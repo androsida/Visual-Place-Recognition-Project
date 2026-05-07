@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import faiss
+import time
 from loguru import logger
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Subset
@@ -59,12 +60,17 @@ def main(args):
         queries_subset_ds = Subset(
             test_ds, list(range(test_ds.num_database, test_ds.num_database + test_ds.num_queries))
         )
+
+
+        #---INIZIO PRIMO CRONOMETRO
+        
         queries_dataloader = DataLoader(dataset=queries_subset_ds, num_workers=args.num_workers, batch_size=1)
         for images, indices in tqdm(queries_dataloader):
             descriptors = model(images.to(args.device))
             descriptors = descriptors.cpu().numpy()
             all_descriptors[indices.numpy(), :] = descriptors
-
+        
+         #---FINE PRIMO CRONOMETRO
     queries_descriptors = all_descriptors[test_ds.num_database :]
     database_descriptors = all_descriptors[: test_ds.num_database]
 
@@ -78,16 +84,21 @@ def main(args):
 
     if args.distance_metric == "l2":
         faiss_index = faiss.IndexFlatL2(args.descriptors_dimension)
-        faiss_index.add(database_descriptors)
-        distances, predictions = faiss_index.search(queries_descriptors, k)
 
     elif args.distance_metric == "dot":
         faiss_index = faiss.IndexFlatIP(args.descriptors_dimension)
-        faiss_index.add(database_descriptors)
-        distances, predictions = faiss_index.search(queries_descriptors, k)
 
     else:
         raise ValueError(f"Unknown distance metric: {args.distance_metric}")
+
+
+    # Database/index processing: OFFLINE, non da includere nel cronometro
+    faiss_index.add(database_descriptors)
+
+    # Qua c'è il vero search
+
+    #--- INIZIO SECONDO CRONOMETRO
+    distances, predictions = faiss_index.search(queries_descriptors, k)
 
     del database_descriptors, all_descriptors
 
@@ -100,7 +111,7 @@ def main(args):
                 if np.any(np.in1d(preds[:n], positives_per_query[query_index])):
                     recalls[i:] += 1
                     break
-
+  #--- FINE SECONDO CRONOMETRO
         # Divide by num_queries and multiply by 100, so the recalls are in percentages
         recalls = recalls / test_ds.num_queries * 100
         recalls_str = ", ".join([f"R@{val}: {rec:.1f}" for val, rec in zip(args.recall_values, recalls)])
