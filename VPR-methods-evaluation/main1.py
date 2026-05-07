@@ -67,8 +67,6 @@ def main(args):
         queries_dataloader = DataLoader(dataset=queries_subset_ds, num_workers=args.num_workers, batch_size=1)
 
         #---INIZIO PRIMO CRONOMETRO
-
-
         torch.cuda.synchronize()
         t01=time.perf_counter()
         for images, indices in tqdm(queries_dataloader):
@@ -79,9 +77,6 @@ def main(args):
          #---FINE PRIMO CRONOMETRO
         torch.cuda.synchronize()
         tf1=time.perf_counter() - t01
-        logger.info(f"TIMING - Query descriptor extraction total time: {tf1:.6f} s")
-        logger.info(f"TIMING - Query descriptor extraction time per query: {tf1 / test_ds.num_queries:.6f} s/query")
-
 
     queries_descriptors = all_descriptors[test_ds.num_database :]
     database_descriptors = all_descriptors[: test_ds.num_database]
@@ -103,15 +98,21 @@ def main(args):
     else:
         raise ValueError(f"Unknown distance metric: {args.distance_metric}")
 
-
-    # Database/index processing: OFFLINE, non da includere nel cronometro
     faiss_index.add(database_descriptors)
 
-    # Qua c'è il vero search
-
     #--- INIZIO SECONDO CRONOMETRO
+    torch.cuda.synchronize()
+    t02=time.perf_counter()
+    
     distances, predictions = faiss_index.search(queries_descriptors, k)
+
     #--- FINE SECONDO CRONOMETRO
+    torch.cuda.synchronize()
+    tf2=time.perf_counter() - t02
+    
+    logger.info(f"TIMING - Total query processing time: {tf1+tf2:.6f} s")
+    logger.info(f"TIMING - Single (mean) query processing time: {(tf1+tf2) / test_ds.num_queries:.6f} s/query")
+    
     del database_descriptors, all_descriptors
 
     # For each query, check if the predictions are correct
