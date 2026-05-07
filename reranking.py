@@ -4,6 +4,7 @@ import os, argparse
 from glob import glob
 from pathlib import Path
 import torch
+import time
 
 from util import get_list_distances_from_preds
 
@@ -42,14 +43,27 @@ def main(args):
     total_queries = len(txt_files)
     recalls = np.zeros(len(recall_values))
 
+    total_rerank_time = 0 
+    
     for txt_file_query in tqdm(txt_files):
         geo_dists = torch.tensor(get_list_distances_from_preds(txt_file_query))[:num_preds]
         torch_file_query = inliers_folder.joinpath(Path(txt_file_query).name.replace('txt', 'torch'))
+
+        #non serve syncronize siamo su cpu qui.
+        # inizio crono
+        t0=time.perf_counter()
+        
         query_results = torch.load(torch_file_query, weights_only=False)
         query_db_inliers = torch.zeros(num_preds, dtype=torch.float32)
         for i in range(num_preds):
             query_db_inliers[i] = query_results[i]['num_inliers']
         query_db_inliers, indices = torch.sort(query_db_inliers, descending=True)
+
+        
+        total_rerank_time += time.perf_counter() - t0
+
+        
+        # fine crono
         geo_dists = geo_dists[indices]
         
         for i, n in enumerate(recall_values):
@@ -60,7 +74,11 @@ def main(args):
     recalls = recalls / total_queries * 100
     recalls_str = ", ".join([f"R@{val}: {rec:.1f}" for val, rec in zip(recall_values, recalls)])
 
+    print(f"TIMING - Reranking total time: {total_rerank_time:.6f} s")
+    print(f"TIMING - Reranking time per query: {total_rerank_time / total_queries:.6f} s/query")
     print(recalls_str)
+
+    
 
 if __name__ == "__main__":
     args = parse_arguments()
