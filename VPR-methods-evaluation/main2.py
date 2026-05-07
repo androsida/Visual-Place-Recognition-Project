@@ -82,6 +82,9 @@ def main(args):
             #---FINE PRIMO CRONOMETRO
 
             total_time += end_time - start_time
+
+        logger.info(f"TIMING - Query descriptor extraction total time: {total_time:.6f} s")
+        logger.info(f"TIMING - Query descriptor extraction time per query: {total_time / test_ds.num_queries:.6f} s/query")
             
     queries_descriptors = all_descriptors[test_ds.num_database :]
     database_descriptors = all_descriptors[: test_ds.num_database]
