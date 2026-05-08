@@ -55,6 +55,8 @@ def main(args):
     start_query = start_query if start_query >= 0 else 0
     num_queries = num_queries if num_queries >= 0 else len(txt_files)
 
+    total_matching_time = 0.0
+
     for txt_file in tqdm(txt_files[start_query : start_query + num_queries]):
         q_num = Path(txt_file).stem
         out_file = output_folder.joinpath(f"{q_num}.torch")
