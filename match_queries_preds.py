@@ -7,6 +7,7 @@ from glob import glob
 from tqdm import tqdm
 from pathlib import Path
 from copy import deepcopy
+import time
 
 from util import read_file_preds
 
@@ -56,6 +57,7 @@ def main(args):
     num_queries = num_queries if num_queries >= 0 else len(txt_files)
 
     total_matching_time = 0.0
+    processed_queries = 0
 
     for txt_file in tqdm(txt_files[start_query : start_query + num_queries]):
         q_num = Path(txt_file).stem
