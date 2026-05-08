@@ -61,6 +61,10 @@ def main(args):
         if out_file.exists():
             continue
         results = []
+        
+        torch.cuda.synchronize() #
+        t0 = time.perf_counter() #
+        
         q_path, pred_paths = read_file_preds(txt_file)
         img0 = matcher.load_image(q_path, resize=img_size)
         for pred_path in pred_paths[:num_preds]:
@@ -68,7 +72,15 @@ def main(args):
             result = matcher(deepcopy(img0), img1)
             result["all_desc0"] = result["all_desc1"] = None
             results.append(result)
+
+        torch.cuda.synchronize() #
+        total_matching_time += time.perf_counter() - t0 #
+        processed_queries += 1 #
+        
         torch.save(results, out_file)
+        
+print(f"TIMING - Image matching total time: {total_matching_time:.6f} s")
+print(f"TIMING - Image matching time per query: {total_matching_time / processed_queries:.6f} s/query")
 
 if __name__ == "__main__":
     args = parse_arguments()
