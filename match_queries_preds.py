@@ -83,8 +83,8 @@ def main(args):
         
         torch.save(results, out_file)
         
-print(f"TIMING - Image matching total time: {total_matching_time:.6f} s")
-print(f"TIMING - Image matching time per query: {total_matching_time / processed_queries:.6f} s/query")
+        print(f"TIMING - Image matching total time: {total_matching_time:.6f} s")
+        print(f"TIMING - Image matching time per query: {total_matching_time / processed_queries:.6f} s/query")
 
 if __name__ == "__main__":
     args = parse_arguments()
